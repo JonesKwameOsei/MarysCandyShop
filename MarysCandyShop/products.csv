@@ -1,5 +1,6 @@
 Id, Type, Name, Price, CocoaPercentage, Shape
 1, 0, Snickers, 1.49, 35
+2, 0, KitKat, 1.29, 30
 3, 0, Milka Alpine Milk, 1.99, 28
 4, 0, Godiva Dark Chocolate, 3.49, 70
 5, 0, Hershey's Cookies 'n' Creme, 1.59, 20
@@ -8,6 +9,3 @@ Id, Type, Name, Price, CocoaPercentage, Shape
 8, 1, Dum Dums Cotton Candy, 2.59, Mini Round
 9, 1, Ring Pop Blue Raspberry, 1.19, Gem/Ring
 10, 1, Charms Blow Pop Sour Apple, 4.99, Round
-2, 0, Kitkat, 1.29, 89
-11, 1, New Tasty Chuppa, 5.50, 1
-12, 1, Super Candy Crush, 6.49, rectangle
