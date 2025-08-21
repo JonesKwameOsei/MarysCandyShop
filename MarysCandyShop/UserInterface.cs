@@ -1,5 +1,4 @@
 ﻿using Spectre.Console;
-using System.Text;
 using static MarysCandyShop.Enums;
 
 namespace MarysCandyShop;
@@ -36,11 +35,14 @@ internal static class UserInterface
             {
                 case MainMenuOptions.AddProduct:
                     var product = GetProductInput();
-                    result = controller.AddSingleProduct(product);
+                    controller.AddSingleProduct(product);
+                    Console.ReadKey();
+                    PromptToViewProducts(controller);
+
                     break;
                 case MainMenuOptions.ViewProducts:
                     //var products = GetProduct();
-                    result = HandleViewProducts(controller);
+                    HandleViewProducts(controller);
                     break;
                 case MainMenuOptions.ViewSingleProduct:
                     var productChoice = GetProductChoice();
@@ -50,10 +52,12 @@ internal static class UserInterface
                     var updatedProduct = GetProductChoice();
                     var updatedResult = GetProductUpdateInput(updatedProduct);
                     controller.UpdateProduct(updatedResult);
+                    PromptToViewProducts(controller, "Would you like to view the updated products?");
                     break;
                 case MainMenuOptions.DeleteProduct:
                     var deleteProduct = GetProductChoice();
                     controller.DeleteProduct(deleteProduct);
+                    PromptToViewProducts(controller, "Would you like to view the remaining products?");
                     break;
                 case MainMenuOptions.QuitApplication:
                     result = controller.QuitApplication();
@@ -81,6 +85,14 @@ internal static class UserInterface
         }
     }
 
+    private static void PromptToViewProducts(ProductController controller, string message = "Would you like to view all products?")
+    {
+        if (AnsiConsole.Confirm(message))
+        {
+            HandleViewProducts(controller);
+        }
+    }
+
     private static Product GetProductUpdateInput(Product product)
     {
         if (product == null)
@@ -96,43 +108,44 @@ internal static class UserInterface
 
         var updateType = AnsiConsole.Confirm("Update product category?");
 
+        var type = ProductType.ChocolateBar;
         if (updateType)
         {
-            var type = AnsiConsole.Prompt(
-                new SelectionPrompt<ProductType>()
-                .Title("Product Type:")
-                .AddChoices(
-                    ProductType.ChocolateBar,
-                    ProductType.Lollipop));
-            if (type == ProductType.ChocolateBar)
-            {
-                Console.Write("Add Cocoa % (0-100): ");
-                var cocoaPercentage = int.Parse(Console.ReadLine() ?? string.Empty);
+            type = AnsiConsole.Prompt(
+            new SelectionPrompt<ProductType>()
+            .Title("Product Type:")
+            .AddChoices(
+                ProductType.ChocolateBar,
+                ProductType.Lollipop));
+        }
 
-                return new ChocolateBar(product.Id)
-                {
-                    Name = product.Name,
-                    Price = product.Price,
-                    CocoaPercentage = cocoaPercentage,
-                };
-            }
+        if (type == ProductType.ChocolateBar)
+        {
+            Console.Write("Add Cocoa % (0-100): ");
+            var cocoaPercentage = int.Parse(Console.ReadLine() ?? string.Empty);
 
-            Console.WriteLine("Enter Shape: ");
-            var shape = Console.ReadLine() ?? string.Empty;
-
-            while (!Validation.IsStringValid(shape))
-            {
-                AnsiConsole.MarkupLine("[red]Shape cannot be empty or have more than 20 characters. Try again![/]");
-            }
-
-            return new Lollipop(product.Id)
+            return new ChocolateBar(product.Id)
             {
                 Name = product.Name,
                 Price = product.Price,
-                Shape = shape,
+                CocoaPercentage = cocoaPercentage,
             };
         }
-        return product;
+
+        Console.WriteLine("Enter Shape: ");
+        var shape = Console.ReadLine() ?? string.Empty;
+
+        while (!Validation.IsStringValid(shape))
+        {
+            AnsiConsole.MarkupLine("[red]Shape cannot be empty or have more than 20 characters. Try again![/]");
+        }
+
+        return new Lollipop(product.Id)
+        {
+            Name = product.Name,
+            Price = product.Price,
+            Shape = shape,
+        };
     }
 
     private static void ViewProduct(Product productChoice)
@@ -143,10 +156,6 @@ internal static class UserInterface
         panel.Padding = new Padding(2, 2, 2, 2);
 
         AnsiConsole.Write(panel);
-
-        AnsiConsole.MarkupLine("\n[dim]Press any key to go back to the menu.[/]");
-        Console.ReadKey();
-        Console.Clear();
     }
 
     private static Product GetProductChoice()
@@ -189,30 +198,34 @@ internal static class UserInterface
 
     }
 
-    private static string HandleViewProducts(ProductController controller)
+    private static void HandleViewProducts(ProductController controller)
     {
         var products = controller.GetProducts();
-        return ViewProduct(products);
+        ViewProducts(products);
     }
 
-    internal static string ViewProduct(List<Product> products)
+    internal static void ViewProducts(List<Product> products)
     {
+        var table = new Table();
+        table.AddColumn("ID");
+        table.AddColumn("Name");
+        table.AddColumn("Price");
+        table.AddColumn("Type");
+        table.AddColumn("CocoaPercentage");
+        table.AddColumn("Shape");
+
         if (products == null || products.Count == 0)
         {
-            return "No products available. Please add a product.";
+            AnsiConsole.MarkupLine("[red]No products available.[/]");
+            return;
         }
 
-        Console.WriteLine("\nAvailable Products:");
-        Console.WriteLine(new string('-', 19));
-
-        var productList = new StringBuilder();
         foreach (var product in products)
         {
-            var productInfo = product.GetProductsForCsv(product.Id);
-            //Console.WriteLine(productInfo);
-            productList.AppendLine(productInfo);
+            var columns = product.GetColumnsArray(product);
+            table.AddRow(columns);
         }
-        return productList.ToString();
+        AnsiConsole.Write(table);
     }
 
     private static void PrintHeader()
