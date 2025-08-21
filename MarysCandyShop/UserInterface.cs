@@ -38,10 +38,8 @@ internal static class UserInterface
                     controller.AddSingleProduct(product);
                     Console.ReadKey();
                     PromptToViewProducts(controller);
-
                     break;
                 case MainMenuOptions.ViewProducts:
-                    //var products = GetProduct();
                     HandleViewProducts(controller);
                     break;
                 case MainMenuOptions.ViewSingleProduct:
@@ -57,6 +55,7 @@ internal static class UserInterface
                 case MainMenuOptions.DeleteProduct:
                     var deleteProduct = GetProductChoice();
                     controller.DeleteProduct(deleteProduct);
+                    Console.ReadKey();
                     PromptToViewProducts(controller, "Would you like to view the remaining products?");
                     break;
                 case MainMenuOptions.QuitApplication:
@@ -67,21 +66,23 @@ internal static class UserInterface
                     break;
             }
 
-
             if (result == "QUIT_APPLICATION")
             {
                 isMenuRunning = false;
                 AnsiConsole.MarkupLine("[green]Thank you for using this app. Goodbye![/]");
             }
-            else
+            else if (!string.IsNullOrEmpty(result))
             {
                 Console.WriteLine(result);
             }
 
             // Wait for user input before closing the console window
-            AnsiConsole.MarkupLine("\n[dim]Press any key to Go Back to Menu[/]");
-            Console.ReadLine();
-            Console.Clear();
+            if (isMenuRunning)
+            {
+                AnsiConsole.MarkupLine("\n[dim]Press any key to Go Back to Menu[/]");
+                Console.ReadLine();
+                Console.Clear();
+            }
         }
     }
 

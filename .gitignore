@@ -6,6 +6,7 @@
 # Others
 products.db
 products.csv
+.env
 
 # User-specific files
 *.rsuser
