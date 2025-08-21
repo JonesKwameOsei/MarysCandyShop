@@ -1,8 +1,8 @@
 ﻿namespace MarysCandyShop;
 
-internal class Enums
+public class Enums
 {
-    internal enum MainMenuOptions
+    public enum MainMenuOptions
     {
         ViewProducts,
         ViewSingleProduct,
@@ -12,7 +12,7 @@ internal class Enums
         QuitApplication
     }
 
-    internal enum ProductType
+    public enum ProductType
     {
         ChocolateBar,
         Lollipop

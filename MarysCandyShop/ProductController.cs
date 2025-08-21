@@ -1,34 +1,48 @@
 ﻿using Microsoft.Data.Sqlite;
 using Spectre.Console;
-using System.Text;
 using static MarysCandyShop.Enums;
 
 namespace MarysCandyShop;
 
-internal class ProductController
+public interface IProductsController
+{
+    void CreateDatabase();
+
+    List<Product> GetProducts();
+
+    void AddSingleProduct(Product product);
+
+    void AddProducts(List<Product> products);
+
+    void UpdateProduct(Product product);
+
+    void DeleteProduct(Product product);
+}
+
+public class ProductController : IProductsController
 {
     private string ConnectionString { get; } = "Data Source = products.db";
 
-    internal void CreateDatabase()
+    public void CreateDatabase()
     {
         try
         {
             if (File.Exists("products.db"))
             {
-                return; // Database already exists, no need to create it again
+                return;
             }
             using var connection = new SqliteConnection(ConnectionString);
             connection.Open();
 
             using var tableCmd = connection.CreateCommand();
             tableCmd.CommandText = @"
-            CREATE TABLE IF NOT EXISTS Products (
+            CREATE TABLE Products (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Type INTEGER NOT NULL,
                 Name TEXT NOT NULL,
                 Price REAL NOT NULL,
-                CocoaPercentage INTEGER NOT NULL,
-                Shape TEXT NOT NULL
+                CocoaPercentage INTEGER NULL,
+                Shape TEXT Null
             )";
             tableCmd.ExecuteNonQuery();
         }
@@ -36,135 +50,81 @@ internal class ProductController
         {
             AnsiConsole.MarkupLine($"[red]Error creating database: {ex.Message}[/]");
             Console.WriteLine(UserInterface.divide);
-            
+
         }
     }
 
-    internal List<Product> GetProducts()
+    public List<Product> GetProducts()
     {
         var products = new List<Product>();
 
         try
         {
-            //products.Clear();
-            if (!File.Exists(Configuration.docPath))
-            {
-                return products;
-            }
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
 
-            using (StreamReader reader = new(Configuration.docPath))
-            {
-                // Discard the header line if it exists
-                reader.ReadLine();
-                var line = reader.ReadLine();
+            var selectCmd = connection.CreateCommand();
+            selectCmd.CommandText = "SELECT * FROM Products";
 
-                while (line != null)
+            using var reader = selectCmd.ExecuteReader();
+
+            if (reader.HasRows)
+            {
+                while (reader.Read())
                 {
-                    string[] parts = line.Split(',');
-                    if (parts.Length >= 3)
+                    if (reader.GetInt32(1) == (int)ProductType.ChocolateBar)
                     {
-                        if (int.Parse(parts[1]) == (int)ProductType.ChocolateBar)
+                        products.Add(new ChocolateBar(reader.GetInt32(0))
                         {
-                            var product = new ChocolateBar(int.Parse(parts[0].Trim()));
-                            product.Name = parts[2].Trim();
-                            product.Price = decimal.Parse(parts[3].Trim());
-                            product.CocoaPercentage = int.Parse(parts[4].Trim());
-                            products.Add(product);
-                        }
-                        else
+                            Name = reader.GetString(2),
+                            Price = reader.GetDecimal(3),
+                            CocoaPercentage = reader.IsDBNull(4) ? 0 : reader.GetInt32(4)
+                        });
+                    }
+                    else
+                    {
+                        products.Add(new Lollipop(reader.GetInt32(0))
                         {
-                            var product = new Lollipop(int.Parse(parts[0].Trim()));
-                            product.Name = parts[2].Trim();
-                            product.Price = decimal.Parse(parts[3].Trim());
-                            product.Shape = parts[4].Trim();
-                            products.Add(product);
-                        }
-                        line = reader.ReadLine();
+                            Name = reader.GetString(2),
+                            Price = reader.GetDecimal(3),
+                            Shape = reader.IsDBNull(5) ? string.Empty : reader.GetString(5)
+                        });
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"Error reading from file: {ex.Message}");
+            AnsiConsole.MarkupLine($"[yellow]Error reading from file: {ex.Message}[/]");
             Console.WriteLine(UserInterface.divide);
-            Console.ResetColor();
         }
 
         return products;
     }
 
-    //internal string HandleAddProduct()
-    //{
-    //    var id = GetProducts().Count;
-    //    if (id == 0)
-    //    {
-    //        Console.WriteLine("No products found. Adding the first product.");
-    //    }
-    //    else
-    //    {
-    //        Console.WriteLine($"Next product ID will be: {id + 1}");
-    //    }
-
-    //    Console.WriteLine(UserInterface.divide);
-
-    //    Console.Write("Product name: ");
-    //    var name = Console.ReadLine() ?? string.Empty;
-
-    //    if (string.IsNullOrEmpty(name))
-    //    {
-    //        return "Product name cannot be empty.";
-    //    }
-
-    //    Console.WriteLine("Enter product price: ");
-    //    if (decimal.TryParse(Console.ReadLine(), out var price) && price > 0)
-    //    {
-    //        var newProduct = new Product(Helpers.GetNextId())
-    //        {
-
-    //            Name = name,
-    //            Price = price
-    //        };
-
-    //        return AddSingleProduct(newProduct);
-    //    }
-
-    //    return "Invalid price entered. Please try again.";
-    //}
-
-    // Pure business logic method
-
-    internal string AddSingleProduct(Product product)
+    public void AddSingleProduct(Product product)
     {
-        var id = GetProducts().Count;
-
         try
         {
-            using (StreamWriter writer = new StreamWriter(Configuration.docPath, append: true, new UTF8Encoding(false)))
-            {
-                if (writer.BaseStream.Length <= 3)
-                {
-                    // Write header if file is empty
-                    writer.WriteLine("Id, Type, Name, Price, CocoaPercentage, Shape");
-                }
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+            using var insertCmd = connection.CreateCommand();
 
-                var csvLine = product.GetProductsForCsv(product.Id);
-                writer.WriteLine(csvLine);
-            }
-            return "Product added successfully";
+            insertCmd.CommandText = product.GetInsertQuery();
+            product.AddParameters(insertCmd);
+
+            insertCmd.ExecuteNonQuery();
+
+            AnsiConsole.MarkupLine("[green]Added product successfully![/]");
         }
         catch (Exception ex)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"Error saving product to file: {ex.Message}");
+            AnsiConsole.MarkupLine($"[yellow]Error saving product to database: {ex.Message}[/]");
             Console.WriteLine(UserInterface.divide);
-            Console.ResetColor();
-            return "Error saving product. Please try again.";
         }
     }
 
-    internal void AddProducts(List<Product> products)
+    public void AddProducts(List<Product> products)
     {
 
         // Products added to the file
@@ -181,9 +141,9 @@ internal class ProductController
                 foreach (var product in products)
                 {
 
-                    var csvLine = product.GetProductsForCsv(product.Id);
+                    //var csvLine = product.GetProductsForCsv(product.Id);
 
-                    writer.WriteLine(csvLine);
+                    //writer.WriteLine(csvLine);
                 }
             }
             Console.WriteLine("Products saved");
@@ -197,32 +157,49 @@ internal class ProductController
         }
     }
 
-    internal void UpdateProduct(Product product)
+    public void UpdateProduct(Product product)
     {
-        var products = GetProducts();
-        if (product == null || products.Count == 0)
+        try
         {
-            AnsiConsole.MarkupLine("[yellow]No products available to update.[/]");
-            return;
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+            using var updateCmd = connection.CreateCommand();
+
+            updateCmd.CommandText = product.GetUpdateQuery();
+            product.AddParameters(updateCmd);
+
+            updateCmd.ExecuteNonQuery();
+
+            AnsiConsole.MarkupLine("[green]Updateded product successfully![/]");
         }
-
-        var updatedProducts = products.Where(p => p != null && p.Id != product.Id).ToList();
-        updatedProducts.Add(product);
-
-        AddProducts(updatedProducts);
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[yellow]Error updating product to database: {ex.Message}[/]");
+            Console.WriteLine(UserInterface.divide);
+        }
     }
 
-    internal void DeleteProduct(Product product)
+    public void DeleteProduct(Product product)
     {
-        var products = GetProducts();
-        if (product == null || products.Count == 0)
+        try
         {
-            AnsiConsole.MarkupLine("[yellow]No products available to delete.[/]");
-            return;
-        }
+            // Open the database connection
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
 
-        var updatedProducts = products.Where(p => p != null && p.Id != product.Id).ToList();
-        AddProducts(updatedProducts);
+            // Create a command to delete the product
+            using var deleteCmd = connection.CreateCommand();
+            deleteCmd.CommandText = $"DELETE FROM Products WHERE Id = {product.Id}";
+
+            deleteCmd.ExecuteNonQuery();
+
+            AnsiConsole.MarkupLine($"[green]Successfully deleted product: {product.Id} - {product.Name}[/]");
+        }
+        catch (SqliteException ex)
+        {
+            AnsiConsole.MarkupLine($"[yellow]Error deleting product: {ex.Message}[/]");
+            Console.WriteLine(UserInterface.divide);
+        }
     }
 
     internal string QuitApplication()

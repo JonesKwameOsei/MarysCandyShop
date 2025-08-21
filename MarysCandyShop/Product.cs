@@ -1,29 +1,35 @@
-﻿using static MarysCandyShop.Enums;
+﻿using Microsoft.Data.Sqlite;
+using static MarysCandyShop.Enums;
 
 namespace MarysCandyShop;
 
-internal abstract class Product
+public abstract class Product
 {
-    internal int Id { get; }
-    internal string? Name { get; set; }
-    internal decimal Price { get; set; }
-    internal ProductType Type { get; set; }
+    public int Id { get; }
+    public string? Name { get; set; }
+    public decimal Price { get; set; }
+    public ProductType Type { get; set; }
 
-    internal Product()
+    public Product()
     {
 
     }
 
-    internal Product(int id)
+    public Product(int id)
     {
         Id = id;
     }
 
-    internal abstract string GetProductsForCsv(int Id);
+    public abstract string[] GetColumnsArray(Product product);
 
-    internal abstract string GetProductForPanel();
+    public abstract string GetProductForPanel();
 
-    //internal string Name
+    public abstract string GetInsertQuery();
+    public abstract string GetUpdateQuery();
+
+    public abstract void AddParameters(SqliteCommand cmd);
+
+    //public string Name
     //{
     //    get
     //    {
@@ -42,37 +48,45 @@ internal abstract class Product
     //    }
     //}
 
-    //internal string GetName()
+    //public string GetName()
     //{
     //    return name;
     //}
 
-    //internal void SetName(string value)
+    //public void SetName(string value)
     //{
     //    name = value;
     //}
 }
 
-internal class ChocolateBar : Product
+public class ChocolateBar : Product
 {
-    internal int CocoaPercentage { get; set; }
+    public int CocoaPercentage { get; set; }
 
-    internal ChocolateBar()
+    public ChocolateBar()
     {
         Type = ProductType.ChocolateBar;
     }
 
-    internal ChocolateBar(int id) : base(id)
+    public ChocolateBar(int id) : base(id)
     {
         Type = ProductType.ChocolateBar;
     }
 
-    internal override string GetProductsForCsv(int Id)
+    public override string[] GetColumnsArray(Product product)
     {
-        return $"{Id}, {(int)Type}, {Name}, {Price}, {CocoaPercentage}";
+        return new string[]
+        {
+            Id.ToString(),
+            Type.ToString(),
+            Name ?? string.Empty,
+            Price.ToString(),
+            CocoaPercentage.ToString(),
+            "",
+        };
     }
 
-    internal override string GetProductForPanel()
+    public override string GetProductForPanel()
     {
         return $@"id: {Id}
             Type: {Type}
@@ -80,33 +94,79 @@ internal class ChocolateBar : Product
             Price: {Price:C2}
             Cocoa Percentage: {CocoaPercentage}%";
     }
+
+    public override string GetInsertQuery()
+    {
+        return $@"INSERT INTO Products (name, price, type, cocoaPercentage)
+                  VALUES (@Name, @Price, @Type, @CocoaPercentage)";
+    }
+
+    public override void AddParameters(SqliteCommand cmd)
+    {
+        cmd.Parameters.AddWithValue("@Name", Name);
+        cmd.Parameters.AddWithValue("@Price", Price);
+        cmd.Parameters.AddWithValue("@Type", (int)Type);
+        cmd.Parameters.AddWithValue("@CocoaPercentage", CocoaPercentage);
+    }
+
+    public override string GetUpdateQuery()
+    {
+        return $"UPDATE Products SET name = @Name, price = @Price, type = 0, cocoaPercentage = @CocoaPercentage WHERE Id = {Id}";
+    }
 }
 
-internal class Lollipop : Product
+public class Lollipop : Product
 {
-    internal string? Shape { get; set; }
+    public string? Shape { get; set; }
 
-    internal Lollipop()
+    public Lollipop()
     {
         Type = ProductType.Lollipop;
     }
 
-    internal Lollipop(int id) : base(id)
+    public Lollipop(int id) : base(id)
     {
         Type = ProductType.Lollipop;
     }
 
-    internal override string GetProductsForCsv(int Id)
+    public override string[] GetColumnsArray(Product product)
     {
-        return $"{Id}, {(int)Type}, {Name}, {Price}, {Shape}";
+        return new string[]
+        {
+            Id.ToString(),
+            Type.ToString(),
+            Name ?? string.Empty,
+            Price.ToString(),
+            "",
+           Shape ?? string.Empty,
+        };
     }
 
-    internal override string GetProductForPanel()
+    public override string GetProductForPanel()
     {
         return $@"id: {Id}
             Type: {Type}
             Name: {Name}
             Price: {Price:C2}
             Shape: {Shape}";
+    }
+
+    public override string GetInsertQuery()
+    {
+        return $@"INSERT INTO Products (name, price, type, shape)
+                  VALUES (@Name, @Price, @Type, @Shape)";
+    }
+
+    public override void AddParameters(SqliteCommand cmd)
+    {
+        cmd.Parameters.AddWithValue("@Name", Name);
+        cmd.Parameters.AddWithValue("@Price", Price);
+        cmd.Parameters.AddWithValue("@Type", (int)Type);
+        cmd.Parameters.AddWithValue("@Shape", Shape ?? string.Empty);
+    }
+
+    public override string GetUpdateQuery()
+    {
+        return $"UPDATE Products SET name = @Name, price = @Price, type = 1, shape = @Shape WHERE Id = {Id}";
     }
 }
