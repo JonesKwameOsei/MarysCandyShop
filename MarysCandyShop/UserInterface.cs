@@ -5,240 +5,241 @@ namespace MarysCandyShop;
 
 internal static class UserInterface
 {
-    internal static readonly string divide = new string('=', 35);
+  internal static readonly string divide = new string('=', 35);
 
-    internal static void RuningMenu()
+  internal static void RuningMenu()
+  {
+    var controller = new ProductController();
+
+    var isMenuRunning = true;
+
+    while (isMenuRunning)
     {
-        var controller = new ProductController();
+      Console.Clear();
+      PrintHeader();
 
-        var isMenuRunning = true;
+      var userChoice = AnsiConsole.Prompt(
+          new SelectionPrompt<MainMenuOptions>()
+          .Title("What would you like to do?")
+          .AddChoices(
+              MainMenuOptions.AddProduct,
+              MainMenuOptions.ViewProducts,
+              MainMenuOptions.ViewSingleProduct,
+              MainMenuOptions.UpdateProduct,
+              MainMenuOptions.DeleteProduct,
+              MainMenuOptions.QuitApplication)
+          );
 
-        while (isMenuRunning)
-        {
-            PrintHeader();
+      string result = string.Empty; // Initialize result to avoid CS0165
 
-            var userChoice = AnsiConsole.Prompt(
-                new SelectionPrompt<MainMenuOptions>()
-                .Title("What would you like to do?")
-                .AddChoices(
-                    MainMenuOptions.AddProduct,
-                    MainMenuOptions.ViewProducts,
-                    MainMenuOptions.ViewSingleProduct,
-                    MainMenuOptions.UpdateProduct,
-                    MainMenuOptions.DeleteProduct,
-                    MainMenuOptions.QuitApplication)
-                );
+      switch (userChoice)
+      {
+        case MainMenuOptions.AddProduct:
+          var product = GetProductInput();
+          controller.AddSingleProduct(product);
+          Console.ReadKey();
+          PromptToViewProducts(controller);
+          break;
+        case MainMenuOptions.ViewProducts:
+          HandleViewProducts(controller);
+          break;
+        case MainMenuOptions.ViewSingleProduct:
+          var productChoice = GetProductChoice();
+          ViewProduct(productChoice);
+          break;
+        case MainMenuOptions.UpdateProduct:
+          var updatedProduct = GetProductChoice();
+          var updatedResult = GetProductUpdateInput(updatedProduct);
+          controller.UpdateProduct(updatedResult);
+          PromptToViewProducts(controller, "Would you like to view the updated products?");
+          break;
+        case MainMenuOptions.DeleteProduct:
+          var deleteProduct = GetProductChoice();
+          controller.DeleteProduct(deleteProduct);
+          Console.ReadKey();
+          PromptToViewProducts(controller, "Would you like to view the remaining products?");
+          break;
+        case MainMenuOptions.QuitApplication:
+          result = controller.QuitApplication();
+          break;
+        default:
+          result = WarningMessage();
+          break;
+      }
 
-            string result = string.Empty; // Initialize result to avoid CS0165
+      if (result == "QUIT_APPLICATION")
+      {
+        isMenuRunning = false;
+        AnsiConsole.MarkupLine("[green]Thank you for using this app. Goodbye![/]");
+      }
+      else if (!string.IsNullOrEmpty(result))
+      {
+        Console.WriteLine(result);
+      }
 
-            switch (userChoice)
-            {
-                case MainMenuOptions.AddProduct:
-                    var product = GetProductInput();
-                    controller.AddSingleProduct(product);
-                    Console.ReadKey();
-                    PromptToViewProducts(controller);
-                    break;
-                case MainMenuOptions.ViewProducts:
-                    HandleViewProducts(controller);
-                    break;
-                case MainMenuOptions.ViewSingleProduct:
-                    var productChoice = GetProductChoice();
-                    ViewProduct(productChoice);
-                    break;
-                case MainMenuOptions.UpdateProduct:
-                    var updatedProduct = GetProductChoice();
-                    var updatedResult = GetProductUpdateInput(updatedProduct);
-                    controller.UpdateProduct(updatedResult);
-                    PromptToViewProducts(controller, "Would you like to view the updated products?");
-                    break;
-                case MainMenuOptions.DeleteProduct:
-                    var deleteProduct = GetProductChoice();
-                    controller.DeleteProduct(deleteProduct);
-                    Console.ReadKey();
-                    PromptToViewProducts(controller, "Would you like to view the remaining products?");
-                    break;
-                case MainMenuOptions.QuitApplication:
-                    result = controller.QuitApplication();
-                    break;
-                default:
-                    result = WarningMessage();
-                    break;
-            }
+      // Wait for user input before closing the console window
+      if (isMenuRunning)
+      {
+        AnsiConsole.MarkupLine("\n[dim]Press any key to Go Back to Menu[/]");
+        Console.ReadLine();
+        Console.Clear();
+      }
+    }
+  }
 
-            if (result == "QUIT_APPLICATION")
-            {
-                isMenuRunning = false;
-                AnsiConsole.MarkupLine("[green]Thank you for using this app. Goodbye![/]");
-            }
-            else if (!string.IsNullOrEmpty(result))
-            {
-                Console.WriteLine(result);
-            }
+  private static void PromptToViewProducts(ProductController controller, string message = "Would you like to view all products?")
+  {
+    if (AnsiConsole.Confirm(message))
+    {
+      HandleViewProducts(controller);
+    }
+  }
 
-            // Wait for user input before closing the console window
-            if (isMenuRunning)
-            {
-                AnsiConsole.MarkupLine("\n[dim]Press any key to Go Back to Menu[/]");
-                Console.ReadLine();
-                Console.Clear();
-            }
-        }
+  private static Product GetProductUpdateInput(Product product)
+  {
+    if (product == null)
+    {
+      AnsiConsole.MarkupLine("[red]No product selected for update.[/]");
+      return null!;
     }
 
-    private static void PromptToViewProducts(ProductController controller, string message = "Would you like to view all products?")
+    AnsiConsole.MarkupLine("[yellow]You'll be prompted with the choice to update each property. Press Enter for [green]Yes[/] and N for [red]No[/].[/]");
+
+    product.Name = AnsiConsole.Confirm("Update Name?") ? AnsiConsole.Ask<string>("Enter new product name: ") : product.Name;
+    product.Price = AnsiConsole.Confirm("Update Price?") ? AnsiConsole.Ask<decimal>("Enter new product price: ") : product.Price;
+
+    var updateType = AnsiConsole.Confirm("Update product category?");
+
+    var type = ProductType.ChocolateBar;
+    if (updateType)
     {
-        if (AnsiConsole.Confirm(message))
-        {
-            HandleViewProducts(controller);
-        }
+      type = AnsiConsole.Prompt(
+      new SelectionPrompt<ProductType>()
+      .Title("Product Type:")
+      .AddChoices(
+          ProductType.ChocolateBar,
+          ProductType.Lollipop));
     }
 
-    private static Product GetProductUpdateInput(Product product)
+    if (type == ProductType.ChocolateBar)
     {
-        if (product == null)
-        {
-            AnsiConsole.MarkupLine("[red]No product selected for update.[/]");
-            return null!;
-        }
+      Console.Write("Add Cocoa % (0-100): ");
+      var cocoaPercentage = int.Parse(Console.ReadLine() ?? string.Empty);
 
-        AnsiConsole.MarkupLine("[yellow]You'll be prompted with the choice to update each property. Press Enter for [green]Yes[/] and N for [red]No[/].[/]");
-
-        product.Name = AnsiConsole.Confirm("Update Name?") ? AnsiConsole.Ask<string>("Enter new product name: ") : product.Name;
-        product.Price = AnsiConsole.Confirm("Update Price?") ? AnsiConsole.Ask<decimal>("Enter new product price: ") : product.Price;
-
-        var updateType = AnsiConsole.Confirm("Update product category?");
-
-        var type = ProductType.ChocolateBar;
-        if (updateType)
-        {
-            type = AnsiConsole.Prompt(
-            new SelectionPrompt<ProductType>()
-            .Title("Product Type:")
-            .AddChoices(
-                ProductType.ChocolateBar,
-                ProductType.Lollipop));
-        }
-
-        if (type == ProductType.ChocolateBar)
-        {
-            Console.Write("Add Cocoa % (0-100): ");
-            var cocoaPercentage = int.Parse(Console.ReadLine() ?? string.Empty);
-
-            return new ChocolateBar(product.Id)
-            {
-                Name = product.Name,
-                Price = product.Price,
-                CocoaPercentage = cocoaPercentage,
-            };
-        }
-
-        Console.WriteLine("Enter Shape: ");
-        var shape = Console.ReadLine() ?? string.Empty;
-
-        while (!Validation.IsStringValid(shape))
-        {
-            AnsiConsole.MarkupLine("[red]Shape cannot be empty or have more than 20 characters. Try again![/]");
-        }
-
-        return new Lollipop(product.Id)
-        {
-            Name = product.Name,
-            Price = product.Price,
-            Shape = shape,
-        };
+      return new ChocolateBar(product.Id)
+      {
+        Name = product.Name,
+        Price = product.Price,
+        CocoaPercentage = cocoaPercentage,
+      };
     }
 
-    private static void ViewProduct(Product productChoice)
-    {
-        var panel = new Panel(productChoice.GetProductForPanel());
-        panel.Border = BoxBorder.Rounded;
-        panel.Header = new PanelHeader("Product Details");
-        panel.Padding = new Padding(2, 2, 2, 2);
+    Console.WriteLine("Enter Shape: ");
+    var shape = Console.ReadLine() ?? string.Empty;
 
-        AnsiConsole.Write(panel);
+    while (!Validation.IsStringValid(shape))
+    {
+      AnsiConsole.MarkupLine("[red]Shape cannot be empty or have more than 20 characters. Try again![/]");
     }
 
-    private static Product GetProductChoice()
+    return new Lollipop(product.Id)
     {
-        try
-        {
-            var controller = new ProductController();
-            var products = controller.GetProducts();
-            if (products == null || products.Count == 0)
-            {
-                AnsiConsole.MarkupLine("[red bold]No products available. Please add a product.[/]");
-                return null!;
-            }
+      Name = product.Name,
+      Price = product.Price,
+      Shape = shape,
+    };
+  }
 
-            var productOptions = products.Select(p => $"{p.Id} - {p.Name ?? "Unnamed"}").ToArray();
-            var option = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title("Select a product")
-                .AddChoices(productOptions));
+  private static void ViewProduct(Product productChoice)
+  {
+    var panel = new Panel(productChoice.GetProductForPanel());
+    panel.Border = BoxBorder.Rounded;
+    panel.Header = new PanelHeader("Product Details");
+    panel.Padding = new Padding(2, 2, 2, 2);
 
-            // Extract the ID from the selected option
-            var idString = option.Split(" - ")[0].Replace("ID: ", "");
-            var selectedId = int.Parse(idString);
+    AnsiConsole.Write(panel);
+  }
 
-            // Find the product by ID
-            var product = products.SingleOrDefault(p => p.Id == selectedId);
+  private static Product GetProductChoice()
+  {
+    try
+    {
+      var controller = new ProductController();
+      var products = controller.GetProducts();
+      if (products == null || products.Count == 0)
+      {
+        AnsiConsole.MarkupLine("[red bold]No products available. Please add a product.[/]");
+        return null!;
+      }
 
-            if (product == null)
-            {
-                AnsiConsole.MarkupLine("[red]Selected product not found.[/]");
-                return null!;
-            }
+      var productOptions = products.Select(p => $"{p.Id} - {p.Name ?? "Unnamed"}").ToArray();
+      var option = AnsiConsole.Prompt(new SelectionPrompt<string>()
+          .Title("Select a product")
+          .AddChoices(productOptions));
 
-            return product;
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Error retrieving products: {ex.Message}[/]");
-            return null!;
-        }
+      // Extract the ID from the selected option
+      var idString = option.Split(" - ")[0].Replace("ID: ", "");
+      var selectedId = int.Parse(idString);
 
+      // Find the product by ID
+      var product = products.SingleOrDefault(p => p.Id == selectedId);
+
+      if (product == null)
+      {
+        AnsiConsole.MarkupLine("[red]Selected product not found.[/]");
+        return null!;
+      }
+
+      return product;
+    }
+    catch (Exception ex)
+    {
+      AnsiConsole.MarkupLine($"[red]Error retrieving products: {ex.Message}[/]");
+      return null!;
     }
 
-    private static void HandleViewProducts(ProductController controller)
+  }
+
+  private static void HandleViewProducts(ProductController controller)
+  {
+    var products = controller.GetProducts();
+    ViewProducts(products);
+  }
+
+  internal static void ViewProducts(List<Product> products)
+  {
+    var table = new Table();
+    table.AddColumn("ID");
+    table.AddColumn("Name");
+    table.AddColumn("Price");
+    table.AddColumn("Type");
+    table.AddColumn("CocoaPercentage");
+    table.AddColumn("Shape");
+
+    if (products == null || products.Count == 0)
     {
-        var products = controller.GetProducts();
-        ViewProducts(products);
+      AnsiConsole.MarkupLine("[red]No products available.[/]");
+      return;
     }
 
-    internal static void ViewProducts(List<Product> products)
+    foreach (var product in products)
     {
-        var table = new Table();
-        table.AddColumn("ID");
-        table.AddColumn("Name");
-        table.AddColumn("Price");
-        table.AddColumn("Type");
-        table.AddColumn("CocoaPercentage");
-        table.AddColumn("Shape");
-
-        if (products == null || products.Count == 0)
-        {
-            AnsiConsole.MarkupLine("[red]No products available.[/]");
-            return;
-        }
-
-        foreach (var product in products)
-        {
-            var columns = product.GetColumnsArray(product);
-            table.AddRow(columns);
-        }
-        AnsiConsole.Write(table);
+      var columns = product.GetColumnsArray(product);
+      table.AddRow(columns);
     }
+    AnsiConsole.Write(table);
+  }
 
-    private static void PrintHeader()
-    {
-        var title = "Mary's Candy Shop";
-        var divide = new string('=', 35);
-        var dateTime = DateTime.Now;
-        var daysSinceOpening = Helpers.GetDaysSinceOpening();
-        var todaysProfit = 5.5m;
-        var isTodaysTargetAchieved = false;
+  private static void PrintHeader()
+  {
+    var title = "Mary's Candy Shop";
+    var divide = new string('=', 35);
+    var dateTime = DateTime.Now;
+    var daysSinceOpening = Helpers.GetDaysSinceOpening();
+    var todaysProfit = 5.5m;
+    var isTodaysTargetAchieved = false;
 
-        Console.WriteLine($@"{title}
+    Console.WriteLine($@"{title}
 {divide}
 Today's date: {dateTime}
 Days since opening: {daysSinceOpening}
@@ -246,87 +247,87 @@ Today's profit: ${todaysProfit}
 Today's target achieved: {isTodaysTargetAchieved}
 {divide}
 ");
-    }
+  }
 
-    private static string WarningMessage()
+  private static string WarningMessage()
+  {
+    return "\nInvalid choice. Please select one of the options";
+  }
+
+  private static Product GetProductInput()
+  {
+    Console.Write("Product name: ");
+    var name = Console.ReadLine() ?? string.Empty;
+
+    while (!Validation.IsStringValid(name))
     {
-        return "\nInvalid choice. Please select one of the options";
+      AnsiConsole.MarkupLine("[red]Product name cannot be empty. Please try again.[/]");
+      Console.Write("Product name: ");
+      name = Console.ReadLine() ?? string.Empty;
     }
 
-    private static Product GetProductInput()
+    Console.Write("Enter product price: ");
+    var priceInput = Console.ReadLine();
+    var priceValidation = Validation.IsPriceValid(priceInput);
+
+    // Price validation with retry logic
+    while (!priceValidation.IsValid)
     {
-        Console.Write("Product name: ");
-        var name = Console.ReadLine() ?? string.Empty;
-
-        while (!Validation.IsStringValid(name))
-        {
-            AnsiConsole.MarkupLine("[red]Product name cannot be empty. Please try again.[/]");
-            Console.Write("Product name: ");
-            name = Console.ReadLine() ?? string.Empty;
-        }
-
-        Console.Write("Enter product price: ");
-        var priceInput = Console.ReadLine();
-        var priceValidation = Validation.IsPriceValid(priceInput);
-
-        // Price validation with retry logic
-        while (!priceValidation.IsValid)
-        {
-            AnsiConsole.MarkupLine($"[red]{priceValidation.ErrorMessage}[/]");
-            Console.Write("Enter product price: ");
-            priceInput = Console.ReadLine();
-            priceValidation = Validation.IsPriceValid(priceInput);
-        }
-
-        var nextId = Helpers.GetNextId();
-
-        // Prompt for product type
-        var type = AnsiConsole.Prompt(
-            new SelectionPrompt<ProductType>()
-             .Title("Select product type:")
-             .AddChoices(
-                 ProductType.ChocolateBar,
-                 ProductType.Lollipop)
-         );
-
-        if (type == ProductType.ChocolateBar)
-        {
-            Console.Write("Add Cocoa % (0-100): ");
-            var cocoaInput = Console.ReadLine();
-            var CocoaInputValidation = Validation.IsCocoaInputValid(cocoaInput);
-
-            while (!CocoaInputValidation.IsValid)
-            {
-                AnsiConsole.MarkupLine($"[red]{CocoaInputValidation.ErrorMessage}[/]");
-                Console.Write("Add Cocoa % (0-100): ");
-                cocoaInput = Console.ReadLine();
-                CocoaInputValidation = Validation.IsCocoaInputValid(cocoaInput);
-            }
-
-            return new ChocolateBar(nextId)
-            {
-                Name = name,
-                Price = priceValidation.Price,
-                CocoaPercentage = CocoaInputValidation.CocoaPercentage,
-            };
-        }
-
-        Console.Write("Add Shape: ");
-        var shape = Console.ReadLine() ?? string.Empty;
-
-        while (!Validation.IsStringValid(shape))
-        {
-            AnsiConsole.MarkupLine("[red]Shape cannot contain Numbers and must be 20 characters or less. Try again![/]");
-            Console.Write("Add Shape: ");
-            shape = Console.ReadLine() ?? string.Empty;
-        }
-
-        return new Lollipop(nextId)
-        {
-            Name = name,
-            Price = priceValidation.Price,
-            Shape = shape,
-        };
+      AnsiConsole.MarkupLine($"[red]{priceValidation.ErrorMessage}[/]");
+      Console.Write("Enter product price: ");
+      priceInput = Console.ReadLine();
+      priceValidation = Validation.IsPriceValid(priceInput);
     }
+
+    var nextId = Helpers.GetNextId();
+
+    // Prompt for product type
+    var type = AnsiConsole.Prompt(
+        new SelectionPrompt<ProductType>()
+         .Title("Select product type:")
+         .AddChoices(
+             ProductType.ChocolateBar,
+             ProductType.Lollipop)
+     );
+
+    if (type == ProductType.ChocolateBar)
+    {
+      Console.Write("Add Cocoa % (0-100): ");
+      var cocoaInput = Console.ReadLine();
+      var CocoaInputValidation = Validation.IsCocoaInputValid(cocoaInput);
+
+      while (!CocoaInputValidation.IsValid)
+      {
+        AnsiConsole.MarkupLine($"[red]{CocoaInputValidation.ErrorMessage}[/]");
+        Console.Write("Add Cocoa % (0-100): ");
+        cocoaInput = Console.ReadLine();
+        CocoaInputValidation = Validation.IsCocoaInputValid(cocoaInput);
+      }
+
+      return new ChocolateBar(nextId)
+      {
+        Name = name,
+        Price = priceValidation.Price,
+        CocoaPercentage = CocoaInputValidation.CocoaPercentage,
+      };
+    }
+
+    Console.Write("Add Shape: ");
+    var shape = Console.ReadLine() ?? string.Empty;
+
+    while (!Validation.IsStringValid(shape))
+    {
+      AnsiConsole.MarkupLine("[red]Shape cannot contain Numbers and must be 20 characters or less. Try again![/]");
+      Console.Write("Add Shape: ");
+      shape = Console.ReadLine() ?? string.Empty;
+    }
+
+    return new Lollipop(nextId)
+    {
+      Name = name,
+      Price = priceValidation.Price,
+      Shape = shape,
+    };
+  }
 }
 
