@@ -1,4 +1,5 @@
-﻿using Spectre.Console;
+﻿using Microsoft.Data.Sqlite;
+using Spectre.Console;
 using System.Text;
 using static MarysCandyShop.Enums;
 
@@ -6,6 +7,39 @@ namespace MarysCandyShop;
 
 internal class ProductController
 {
+    private string ConnectionString { get; } = "Data Source = products.db";
+
+    internal void CreateDatabase()
+    {
+        try
+        {
+            if (File.Exists("products.db"))
+            {
+                return; // Database already exists, no need to create it again
+            }
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+
+            using var tableCmd = connection.CreateCommand();
+            tableCmd.CommandText = @"
+            CREATE TABLE IF NOT EXISTS Products (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Type INTEGER NOT NULL,
+                Name TEXT NOT NULL,
+                Price REAL NOT NULL,
+                CocoaPercentage INTEGER NOT NULL,
+                Shape TEXT NOT NULL
+            )";
+            tableCmd.ExecuteNonQuery();
+        }
+        catch (SqliteException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error creating database: {ex.Message}[/]");
+            Console.WriteLine(UserInterface.divide);
+            
+        }
+    }
+
     internal List<Product> GetProducts()
     {
         var products = new List<Product>();

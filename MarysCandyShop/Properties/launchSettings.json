@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MarysCandyShop": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\JonesPC\\OneDrive\\MyStudyFolder\\Jomacs-FS\\Backend\\CSharp\\Projects\\MarysCandyShop\\MarysCandyShop\\"
+    }
+  }
+}
